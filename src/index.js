@@ -210,6 +210,25 @@ module.exports = async function sftpCache({
         const localPath = join(localCacheDir, path)
         const remotePath = join(remoteCacheDir, path)
         await ssh.putFile(localPath, remotePath)
+        const mtime = parseInt(
+          (localMap[path].stats.mtime.getTime() / 1000).toFixed(0)
+        )
+        await new Promise((resolve, reject) => {
+          sftp.setstat(
+            remotePath,
+            {
+              mtime,
+              atime: mtime,
+              ctime: mtime
+            },
+            (err) => {
+              if (err) {
+                return reject(err)
+              }
+              resolve()
+            }
+          )
+        })
       }
     }
 
