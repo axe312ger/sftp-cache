@@ -1,5 +1,6 @@
 const { relative, resolve, join, dirname } = require('path')
 
+const execa = require('execa')
 const fg = require('fast-glob')
 const { mkdirp, utimes } = require('fs-extra')
 const { difference, intersection, uniq } = require('lodash')
@@ -56,20 +57,35 @@ function buildFileMap(list) {
 
 // Recursively walk folder on local machine and gather files with stats
 async function getLocalFiles(dir, localDir) {
-  const tree = await fg([join(dir, '**', '*')], { stats: true })
+  const files = await fg([join(dir, '**', '*')], { stats: true })
 
-  return tree.map(({ name, path, stats: { size, mtime } }) => ({
-    name,
-    path: relative(localDir, path),
-    stats: {
-      size,
-      mtime: Math.floor(new Date(mtime).getTime() / 1000)
-    }
-  }))
+  const list = []
+  for (const file of files) {
+    const {
+      name,
+      path,
+      stats: { size, mtime }
+    } = file
+
+    const { stdout } = await execa('md5', ['-q', path])
+    const md5 = stdout.trim()
+
+    list.push({
+      name,
+      path: relative(localDir, path),
+      stats: {
+        size,
+        mtime: Math.floor(new Date(mtime).getTime() / 1000),
+        md5
+      }
+    })
+  }
+
+  return list
 }
 
 // Recursively walk folder on remote and gather files with stats
-async function getRemoteFiles(sftp, dir, remoteDir) {
+async function getRemoteFiles({ ssh, sftp, dir, remoteCacheDir }) {
   console.log(`Looking for remote files at ${dir}...`)
   const files = await sftpReadDir({ sftp, dir })
 
@@ -83,18 +99,28 @@ async function getRemoteFiles(sftp, dir, remoteDir) {
     } = file
     const path = join(dir, filename)
     if (longname[0] !== 'd') {
+      const md5sum = await ssh.exec('md5sum', [join(dir, filename)])
+
+      const md5 = md5sum.split(' ')[0].trim()
+
       list.push({
         name: filename,
-        path: relative(remoteDir, join(dir, filename)),
+        path: relative(remoteCacheDir, join(dir, filename)),
         stats: {
           size,
-          mtime
+          mtime,
+          md5
         }
       })
       continue
     }
 
-    const subDirList = await getRemoteFiles(sftp, path, remoteDir)
+    const subDirList = await getRemoteFiles({
+      ssh,
+      sftp,
+      dir: path,
+      remoteCacheDir
+    })
 
     list = [...list, ...subDirList]
   }
@@ -116,7 +142,12 @@ async function syncDir({
   const remoteCacheDir = resolve(remoteDir, cacheDirName)
 
   const localFiles = await getLocalFiles(localCacheDir, localCacheDir)
-  const remoteFiles = await getRemoteFiles(sftp, remoteCacheDir, remoteCacheDir)
+  const remoteFiles = await getRemoteFiles({
+    ssh,
+    sftp,
+    dir: remoteCacheDir,
+    remoteCacheDir
+  })
 
   const localMap = buildFileMap(localFiles)
   const remoteMap = buildFileMap(remoteFiles)
@@ -171,19 +202,33 @@ async function syncDir({
     })
     .filter(Boolean)
 
+  const md5Different = existing
+    .map((path) => {
+      const localFile = localMap[path]
+      const remoteFile = remoteMap[path]
+
+      if (remoteFile.stats.md5 !== localFile.stats.md5) {
+        console.log(remoteFile.stats.md5, '!==', localFile.stats.md5)
+        return path
+      }
+    })
+    .filter(Boolean)
+
   console.log({
     missingLocal: missingLocal.map((path) => path),
     missingRemote: missingRemote.map((path) => path),
     newerLocal: newerLocal.map((path) => path),
     newerRemote: newerRemote.map((path) => path),
-    sizeDifferent: sizeDifferent.map((path) => path)
+    sizeDifferent: sizeDifferent.map((path) => path),
+    md5Different: md5Different.map((path) => path)
   })
 
   if (syncDirection === 'cache') {
     const filesToCache = uniq([
       ...missingRemote,
-      ...newerLocal,
-      ...sizeDifferent
+      //  ...newerLocal,
+      //  ...sizeDifferent,
+      ...md5Different
     ]).sort()
     console.log(`Caching ${filesToCache.length} files to ${connection.host}`)
 
@@ -219,8 +264,9 @@ async function syncDir({
   if (syncDirection === 'download') {
     const filesToDownload = uniq([
       ...missingLocal,
-      ...newerRemote,
-      ...sizeDifferent
+      //  ...newerRemote,
+      //  ...sizeDifferent
+      ...md5Different
     ]).sort()
     console.log(
       `Downloading ${filesToDownload.length} files from ${connection.host}`
@@ -254,6 +300,7 @@ module.exports = async function sftpCache({
       'No sync direction passed (download|cache). You can either download the files to this machine or refill the cache on remote.'
     )
   }
+  console.log(`Connecting via ssh to ${connection.host}`)
   const ssh = new NodeSsh()
   await ssh.connect(connection)
   const sftp = await ssh.requestSFTP()
@@ -271,5 +318,7 @@ module.exports = async function sftpCache({
     })
   }
 
+  console.log(`Closing ssh connection to ${connection.host}`)
+  ssh.end()
   console.log('Finished')
 }
