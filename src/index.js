@@ -57,7 +57,8 @@ function buildFileMap(list) {
 // Recursively walk folder on local machine and gather files with stats
 async function getLocalFiles(dir, localDir) {
   const tree = await fg([join(dir, '**', '*')], { stats: true })
-  return tree.map(({ name, path, stats: { size, atime, mtime, ctime } }) => ({
+
+  return tree.map(({ name, path, stats: { size, mtime } }) => ({
     name,
     path: relative(localDir, path),
     stats: {
@@ -101,25 +102,17 @@ async function getRemoteFiles(sftp, dir, remoteDir) {
   return list
 }
 
-module.exports = async function sftpCache({
+async function syncDir({
   connection,
+  ssh,
+  sftp,
   localDir,
   remoteDir,
-  dirsToCache,
+  dirToCache,
   syncDirection
 }) {
-  if (!syncDirection) {
-    throw new Error(
-      'No sync direction passed (download|cache). You can either download the files to this machine or refill the cache on remote.'
-    )
-  }
-  const ssh = new NodeSsh()
-  await ssh.connect(connection)
-  const sftp = await ssh.requestSFTP()
-
-  // @todo support multiple dirs
-  const cacheDirName = dirsToCache[0].replace(/\//g, '--')
-  const localCacheDir = resolve(localDir, dirsToCache[0])
+  const cacheDirName = dirToCache.replace(/\//g, '--')
+  const localCacheDir = resolve(localDir, dirToCache)
   const remoteCacheDir = resolve(remoteDir, cacheDirName)
 
   const localFiles = await getLocalFiles(localCacheDir, localCacheDir)
@@ -246,6 +239,36 @@ module.exports = async function sftpCache({
       const { mtime } = remoteMap[path].stats
       await utimes(localPath, mtime, mtime)
     }
+  }
+}
+
+module.exports = async function sftpCache({
+  connection,
+  localDir,
+  remoteDir,
+  dirsToCache,
+  syncDirection
+}) {
+  if (!syncDirection) {
+    throw new Error(
+      'No sync direction passed (download|cache). You can either download the files to this machine or refill the cache on remote.'
+    )
+  }
+  const ssh = new NodeSsh()
+  await ssh.connect(connection)
+  const sftp = await ssh.requestSFTP()
+
+  for (let dirToCache of dirsToCache) {
+    console.log(`Processing ${dirToCache}`)
+    await syncDir({
+      connection,
+      ssh,
+      sftp,
+      localDir,
+      remoteDir,
+      dirToCache,
+      syncDirection
+    })
   }
 
   console.log('Finished')
