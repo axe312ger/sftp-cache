@@ -1,11 +1,32 @@
-const { sep, relative, resolve, join } = require('path')
+const { relative, resolve, join, dirname } = require('path')
 
 const fg = require('fast-glob')
-// const { readdir, mkdirp } = require('fs-extra')
+const { mkdirp } = require('fs-extra')
 const { difference, intersection, uniq } = require('lodash')
 const NodeSsh = require('node-ssh')
 
-async function sftpReadDir({ sftp, dir, createDir = false }) {
+async function sftpMkdirP({ sftp, dir }) {
+  const dirs = dir.split('/')
+  for (let depth = 0; depth <= dirs.length; depth++) {
+    try {
+      await new Promise((resolve, reject) => {
+        const dirToCreate = join(dirs.slice(0, depth).join('/'))
+        sftp.mkdir(dirToCreate, function(err) {
+          if (err) {
+            reject(err)
+          }
+          resolve()
+        })
+      })
+    } catch (err) {
+      if (err.code !== 4) {
+        throw err
+      }
+    }
+  }
+}
+
+async function sftpReadDir({ sftp, dir }) {
   try {
     const files = await new Promise((resolve, reject) => {
       sftp.readdir(dir, function(err, list) {
@@ -17,30 +38,10 @@ async function sftpReadDir({ sftp, dir, createDir = false }) {
     })
     return files
   } catch (err) {
-    if (err.code === 2 && createDir) {
+    if (err.code === 2) {
       console.log(`Directory ${dir} does not exist. Creating it.`)
 
-      const dirs = dir.split(sep)
-
-      for (let depth = 0; depth <= dirs.length; depth++) {
-        try {
-          await new Promise((resolve, reject) => {
-            const dirToCreate = join(dirs.slice(0, depth).join(sep))
-            console.log({ dirToCreate })
-            sftp.mkdir(dirToCreate, function(err) {
-              if (err) {
-                reject(err)
-              }
-              resolve()
-            })
-          })
-        } catch (err) {
-          if (err.code !== 4) {
-            throw err
-          }
-        }
-      }
-
+      await sftpMkdirP({ sftp, dir })
       return []
     }
 
@@ -115,7 +116,7 @@ module.exports = async function sftpCache({
 
     // @todo support multiple dirs
     const cacheDirName = dirsToCache[0].replace(/\//g, '--')
-    const localCacheDir = relative(localDir, dirsToCache[0])
+    const localCacheDir = resolve(localDir, dirsToCache[0])
     const remoteCacheDir = resolve(remoteDir, cacheDirName)
 
     const localFiles = await getLocalFiles(localCacheDir, localCacheDir)
@@ -127,8 +128,6 @@ module.exports = async function sftpCache({
 
     const localMap = buildFileMap(localFiles)
     const remoteMap = buildFileMap(remoteFiles)
-
-    console.log({ localMap, remoteMap })
 
     /**
      * find files missing local
@@ -202,10 +201,15 @@ module.exports = async function sftpCache({
         `Caching ${filesToCache.length} files to ${connection.host}`
       )
       for (let path of filesToCache) {
-        // @todo mkdirp!
-        console.log(localMap[path].path, join(remoteCacheDir, path))
-        console.log(`Caching ${path}`)
-        await ssh.putFile(join(localCacheDir, path), join(remoteCacheDir, path))
+        console.log(
+          `Caching ${path}\n${join(remoteCacheDir, path)} -> ${join(
+            localCacheDir,
+            path
+          )}`
+        )
+        const localPath = join(localCacheDir, path)
+        const remotePath = join(remoteCacheDir, path)
+        await ssh.putFile(localPath, remotePath)
       }
     }
 
@@ -220,9 +224,16 @@ module.exports = async function sftpCache({
         `Downloading ${filesToDownload.length} files from ${connection.host}`
       )
       for (let path of filesToDownload) {
-        // @todo mkdirp!
-        console.log(`Downloading ${path}`)
-        await ssh.getFile(join(remoteCacheDir, path), join(localCacheDir, path))
+        console.log(
+          `Downloading ${path}\n${join(remoteCacheDir, path)} -> ${join(
+            localCacheDir,
+            path
+          )}`
+        )
+        const localPath = join(localCacheDir, path)
+        const remotePath = join(remoteCacheDir, path)
+        await mkdirp(dirname(localPath))
+        await ssh.getFile(localPath, remotePath)
       }
     }
 
