@@ -29,15 +29,18 @@
       "git add"
     ]
   },
+  "files": [
+    "src/index.js"
+  ],
   "dependencies": {
-    "eslint-config-standard": "^12.0.0",
-    "eslint-plugin-node": "^9.1.0",
     "fast-glob": "^3.0.4",
     "fs-extra": "^8.1.0",
     "lodash": "^4.17.11",
     "node-ssh": "^6.0.0"
   },
   "devDependencies": {
+    "eslint-config-standard": "^12.0.0",
+    "eslint-plugin-node": "^9.1.0",
     "eslint": "^5.16.0",
     "eslint-config-prettier": "^6.0.0",
     "eslint-plugin-import": "^2.18.0",
