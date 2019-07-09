@@ -1,7 +1,7 @@
 const { relative, resolve, join, dirname } = require('path')
 
 const fg = require('fast-glob')
-const { mkdirp } = require('fs-extra')
+const { mkdirp, utimes } = require('fs-extra')
 const { difference, intersection, uniq } = require('lodash')
 const NodeSsh = require('node-ssh')
 
@@ -60,7 +60,7 @@ async function getLocalFiles(dir, localDir) {
     path: relative(localDir, path),
     stats: {
       size,
-      mtime: new Date(mtime)
+      mtime: Math.floor(new Date(mtime).getTime() / 1000)
     }
   }))
 }
@@ -83,7 +83,7 @@ async function getRemoteFiles(sftp, dir, remoteDir) {
         path: relative(remoteDir, join(dir, filename)),
         stats: {
           size,
-          mtime: new Date(mtime * 1000)
+          mtime
         }
       })
       continue
@@ -182,13 +182,13 @@ module.exports = async function sftpCache({
       })
       .filter(Boolean)
 
-    // console.log({
-    //   missingLocal,
-    //   missingRemote,
-    //   newerLocal,
-    //   newerRemote,
-    //   sizeDifferend: sizeDifferent
-    // })
+    console.log({
+      missingLocal: missingLocal.map((path) => path),
+      missingRemote: missingRemote.map((path) => path),
+      newerLocal: newerLocal.map((path) => path),
+      newerRemote: newerRemote.map((path) => path),
+      sizeDifferent: sizeDifferent.map((path) => path)
+    })
 
     if (syncDirection === 'cache') {
       const filesToCache = uniq([
@@ -196,10 +196,8 @@ module.exports = async function sftpCache({
         ...newerLocal,
         ...sizeDifferent
       ]).sort()
-      console.log(
-        { filesToCache },
-        `Caching ${filesToCache.length} files to ${connection.host}`
-      )
+      console.log(`Caching ${filesToCache.length} files to ${connection.host}`)
+
       for (let path of filesToCache) {
         console.log(
           `Caching ${path}\n${join(remoteCacheDir, path)} -> ${join(
@@ -210,16 +208,13 @@ module.exports = async function sftpCache({
         const localPath = join(localCacheDir, path)
         const remotePath = join(remoteCacheDir, path)
         await ssh.putFile(localPath, remotePath)
-        const mtime = parseInt(
-          (localMap[path].stats.mtime.getTime() / 1000).toFixed(0)
-        )
+        const { mtime } = localMap[path].stats
         await new Promise((resolve, reject) => {
           sftp.setstat(
             remotePath,
             {
               mtime,
-              atime: mtime,
-              ctime: mtime
+              atime: mtime
             },
             (err) => {
               if (err) {
@@ -239,7 +234,6 @@ module.exports = async function sftpCache({
         ...sizeDifferent
       ]).sort()
       console.log(
-        { filesToDownload },
         `Downloading ${filesToDownload.length} files from ${connection.host}`
       )
       for (let path of filesToDownload) {
@@ -253,6 +247,8 @@ module.exports = async function sftpCache({
         const remotePath = join(remoteCacheDir, path)
         await mkdirp(dirname(localPath))
         await ssh.getFile(localPath, remotePath)
+        const { mtime } = remoteMap[path].stats
+        await utimes(localPath, mtime, mtime)
       }
     }
 
