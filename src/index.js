@@ -319,6 +319,6 @@ module.exports = async function sftpCache({
   }
 
   console.log(`Closing ssh connection to ${connection.host}`)
-  ssh.end()
+  ssh.dispose()
   console.log('Finished')
 }
