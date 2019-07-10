@@ -1,131 +1,15 @@
-const { relative, resolve, join, dirname } = require('path')
+const { resolve, join, dirname } = require('path')
 
-const execa = require('execa')
-const fg = require('fast-glob')
 const { mkdirp, utimes } = require('fs-extra')
 const { difference, intersection, uniq } = require('lodash')
 const NodeSsh = require('node-ssh')
 
-async function sftpMkdirP({ sftp, dir }) {
-  const dirs = dir.split('/')
-  for (let depth = 0; depth <= dirs.length; depth++) {
-    try {
-      await new Promise((resolve, reject) => {
-        const dirToCreate = join(dirs.slice(0, depth).join('/'))
-        sftp.mkdir(dirToCreate, function(err) {
-          if (err) {
-            reject(err)
-          }
-          resolve()
-        })
-      })
-    } catch (err) {
-      if (err.code !== 4) {
-        throw err
-      }
-    }
-  }
-}
-
-async function sftpReadDir({ sftp, dir }) {
-  try {
-    const files = await new Promise((resolve, reject) => {
-      sftp.readdir(dir, function(err, list) {
-        if (err) {
-          reject(err)
-        }
-        resolve(list)
-      })
-    })
-    return files
-  } catch (err) {
-    if (err.code === 2) {
-      console.log(`Directory ${dir} does not exist. Creating it.`)
-
-      await sftpMkdirP({ sftp, dir })
-      return []
-    }
-
-    throw err
-  }
-}
+const { getRemoteFiles } = require('./sftp')
+const { getLocalFiles } = require('./filesystem')
 
 // Array of files to map of files by relative path in cache
 function buildFileMap(list) {
   return list.reduce((map, file) => ({ ...map, [file.path]: file }), {})
-}
-
-// Recursively walk folder on local machine and gather files with stats
-async function getLocalFiles(dir, localDir) {
-  const files = await fg([join(dir, '**', '*')], { stats: true })
-
-  const list = []
-  for (const file of files) {
-    const {
-      name,
-      path,
-      stats: { size, mtime }
-    } = file
-
-    const { stdout } = await execa('md5', ['-q', path])
-    const md5 = stdout.trim()
-
-    list.push({
-      name,
-      path: relative(localDir, path),
-      stats: {
-        size,
-        mtime: Math.floor(new Date(mtime).getTime() / 1000),
-        md5
-      }
-    })
-  }
-
-  return list
-}
-
-// Recursively walk folder on remote and gather files with stats
-async function getRemoteFiles({ ssh, sftp, dir, remoteCacheDir }) {
-  console.log(`Looking for remote files at ${dir}...`)
-  const files = await sftpReadDir({ sftp, dir })
-
-  let list = []
-
-  for (let file of files) {
-    const {
-      filename,
-      longname,
-      attrs: { size, mtime }
-    } = file
-    const path = join(dir, filename)
-    if (longname[0] !== 'd') {
-      const md5sum = await ssh.exec('md5sum', [join(dir, filename)])
-
-      const md5 = md5sum.split(' ')[0].trim()
-
-      list.push({
-        name: filename,
-        path: relative(remoteCacheDir, join(dir, filename)),
-        stats: {
-          size,
-          mtime,
-          md5
-        }
-      })
-      continue
-    }
-
-    const subDirList = await getRemoteFiles({
-      ssh,
-      sftp,
-      dir: path,
-      remoteCacheDir
-    })
-
-    list = [...list, ...subDirList]
-  }
-
-  return list
 }
 
 async function syncDir({
