@@ -1,4 +1,5 @@
 const { relative, join } = require('path')
+const { platform } = require('os')
 
 const execa = require('execa')
 const fg = require('fast-glob')
@@ -15,8 +16,22 @@ async function getLocalFiles(dir, localDir) {
       stats: { size, mtime }
     } = file
 
-    const { stdout } = await execa('md5', ['-q', path])
-    const md5 = stdout.trim()
+    const os = platform()
+    let md5Command = 'md5sum'
+    let md5Params = [path]
+
+    if (os === 'darwin') {
+      md5Command = 'md5'
+      md5Params = ['-q', path]
+    }
+
+    if (os === 'win32') {
+      md5Command = 'CertUtil'
+      md5Params = ['-hashfile', path, 'MD5']
+    }
+
+    const { stdout } = await execa(md5Command, md5Params)
+    const md5 = stdout.match(/[a-f0-9]{32}/)[0]
 
     list.push({
       name,
