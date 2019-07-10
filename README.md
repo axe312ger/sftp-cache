@@ -22,7 +22,7 @@ The main goal is to allow caching of heavy project assets like videos to avoid u
 ## Installation
 
 ```sh
-npm i sftp-cache
+npm i sftp-cache@canary
 ```
 
 ## Usage
