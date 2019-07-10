@@ -30,7 +30,9 @@
     ]
   },
   "files": [
-    "src/index.js"
+    "src/index.js",
+    "src/filesystem.js",
+    "src/sftp.js"
   ],
   "dependencies": {
     "execa": "^2.0.3",
