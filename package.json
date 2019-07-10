@@ -10,8 +10,28 @@
     "format": "prettier --write '{src/**/*.js,*.{js,json}}'",
     "lint": "eslint src"
   },
-  "keywords": [],
+  "keywords": [
+    "node",
+    "cache",
+    "ssh",
+    "ssh2",
+    "md5",
+    "hash",
+    "sftp",
+    "compare",
+    "assets",
+    "upload",
+    "download"
+  ],
   "author": "Benedikt Rötsch <opensource@axe312.de>",
+  "bugs": {
+    "url": "https://github.com/axe312ger/sftp-cache/issues"
+  },
+  "homepage": "https://github.com/axe312ger/sftp-cache/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/axe312ger/sftp-cache.git"
+  },
   "license": "MIT",
   "husky": {
     "hooks": {
