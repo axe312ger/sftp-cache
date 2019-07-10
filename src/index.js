@@ -3,6 +3,7 @@ const { resolve, join, dirname } = require('path')
 const { mkdirp, utimes } = require('fs-extra')
 const { difference, intersection, uniq } = require('lodash')
 const NodeSsh = require('node-ssh')
+const { default: PQueue } = require('p-queue')
 
 const { getRemoteFiles } = require('./sftp')
 const { getLocalFiles } = require('./filesystem')
@@ -13,6 +14,7 @@ function buildFileMap(list) {
 }
 
 async function syncDir({
+  queue,
   connection,
   ssh,
   sftp,
@@ -116,33 +118,37 @@ async function syncDir({
     ]).sort()
     console.log(`Caching ${filesToCache.length} files to ${connection.host}`)
 
-    for (let path of filesToCache) {
-      console.log(
-        `Caching ${path}\n${join(remoteCacheDir, path)} -> ${join(
-          localCacheDir,
-          path
-        )}`
+    await Promise.all(
+      filesToCache.map((path) =>
+        queue.add(async () => {
+          console.log(
+            `Caching ${path}\n${join(remoteCacheDir, path)} -> ${join(
+              localCacheDir,
+              path
+            )}`
+          )
+          const localPath = join(localCacheDir, path)
+          const remotePath = join(remoteCacheDir, path)
+          await ssh.putFile(localPath, remotePath)
+          const { mtime } = localMap[path].stats
+          await new Promise((resolve, reject) => {
+            sftp.setstat(
+              remotePath,
+              {
+                mtime,
+                atime: mtime
+              },
+              (err) => {
+                if (err) {
+                  return reject(err)
+                }
+                resolve()
+              }
+            )
+          })
+        })
       )
-      const localPath = join(localCacheDir, path)
-      const remotePath = join(remoteCacheDir, path)
-      await ssh.putFile(localPath, remotePath)
-      const { mtime } = localMap[path].stats
-      await new Promise((resolve, reject) => {
-        sftp.setstat(
-          remotePath,
-          {
-            mtime,
-            atime: mtime
-          },
-          (err) => {
-            if (err) {
-              return reject(err)
-            }
-            resolve()
-          }
-        )
-      })
-    }
+    )
   }
 
   if (syncDirection === 'download') {
@@ -155,20 +161,24 @@ async function syncDir({
     console.log(
       `Downloading ${filesToDownload.length} files from ${connection.host}`
     )
-    for (let path of filesToDownload) {
-      console.log(
-        `Downloading ${path}\n${join(remoteCacheDir, path)} -> ${join(
-          localCacheDir,
-          path
-        )}`
+    await Promise.all(
+      filesToDownload.map((path) =>
+        queue.add(async () => {
+          console.log(
+            `Downloading ${path}\n${join(remoteCacheDir, path)} -> ${join(
+              localCacheDir,
+              path
+            )}`
+          )
+          const localPath = join(localCacheDir, path)
+          const remotePath = join(remoteCacheDir, path)
+          await mkdirp(dirname(localPath))
+          await ssh.getFile(localPath, remotePath)
+          const { mtime } = remoteMap[path].stats
+          await utimes(localPath, mtime, mtime)
+        })
       )
-      const localPath = join(localCacheDir, path)
-      const remotePath = join(remoteCacheDir, path)
-      await mkdirp(dirname(localPath))
-      await ssh.getFile(localPath, remotePath)
-      const { mtime } = remoteMap[path].stats
-      await utimes(localPath, mtime, mtime)
-    }
+    )
   }
 }
 
@@ -177,13 +187,17 @@ module.exports = async function sftpCache({
   localDir,
   remoteDir,
   dirsToCache,
-  syncDirection
+  syncDirection,
+  concurrency = 5
 }) {
   if (!syncDirection) {
     throw new Error(
       'No sync direction passed (download|cache). You can either download the files to this machine or refill the cache on remote.'
     )
   }
+
+  const queue = new PQueue({ concurrency })
+
   console.log(`Connecting via ssh to ${connection.host}`)
   const ssh = new NodeSsh()
   await ssh.connect(connection)
@@ -192,6 +206,7 @@ module.exports = async function sftpCache({
   for (let dirToCache of dirsToCache) {
     console.log(`Processing ${dirToCache}`)
     await syncDir({
+      queue,
       connection,
       ssh,
       sftp,
