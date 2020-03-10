@@ -55,21 +55,23 @@
     "src/sftp.js"
   ],
   "dependencies": {
-    "execa": "^2.0.3",
+    "execa": "^4.0.0",
     "fast-glob": "^3.0.4",
     "fs-extra": "^8.1.0",
     "lodash": "^4.17.11",
-    "node-ssh": "^6.0.0",
+    "node-ssh": "^8.0.0",
     "p-queue": "^6.0.2"
   },
   "devDependencies": {
     "eslint": "^6.0.1",
     "eslint-config-prettier": "^6.0.0",
-    "eslint-config-standard": "^12.0.0",
+    "eslint-config-standard": "^14.1.0",
     "eslint-plugin-import": "^2.18.0",
-    "eslint-plugin-node": "^9.1.0",
-    "husky": "^3.0.0",
-    "lint-staged": "^9.1.0",
+    "eslint-plugin-node": "^11.0.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "husky": "^4.2.3",
+    "lint-staged": "^10.0.8",
     "prettier": "^1.18.2"
   }
 }
