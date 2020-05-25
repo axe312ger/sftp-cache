@@ -1,0 +1,22 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`parses remote directory 1`] = `
+Array [
+  Object {
+    "name": "example-file-name.md",
+    "path": "dir-to-cache/example-file-name.md",
+    "stats": Object {
+      "mtime": "456",
+      "size": "123",
+    },
+  },
+  Object {
+    "name": "file-with-content.md",
+    "path": "dir-to-cache/subdir/file-with-content.md",
+    "stats": Object {
+      "mtime": "456",
+      "size": "123",
+    },
+  },
+]
+`;
