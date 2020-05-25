@@ -1,10 +1,10 @@
 const { resolve, join, dirname } = require('path')
 
 const { mkdirp, utimes } = require('fs-extra')
-const { difference, intersection, uniq } = require('lodash')
 const NodeSsh = require('node-ssh')
 const { default: PQueue } = require('p-queue')
 
+const diff = require('./diff')
 const { getRemoteFiles } = require('./sftp')
 const { getLocalFiles } = require('./filesystem')
 
@@ -38,88 +38,13 @@ async function syncDir({
   const localMap = buildFileMap(localFiles)
   const remoteMap = buildFileMap(remoteFiles)
 
-  /**
-   * find files missing local
-   * find files missing remote
-   * find files newer local
-   * find files newer remote
-   * find files size different
-   */
-
-  const missingLocal = difference(Object.keys(remoteMap), Object.keys(localMap))
-
-  const missingRemote = difference(
-    Object.keys(localMap),
-    Object.keys(remoteMap)
-  )
-
-  const existing = intersection(Object.keys(localMap), Object.keys(remoteMap))
-
-  const newerLocal = existing
-    .map((path) => {
-      const localFile = localMap[path]
-      const remoteFile = remoteMap[path]
-
-      if (localFile.stats.mtime > remoteFile.stats.mtime) {
-        return path
-      }
-    })
-    .filter(Boolean)
-
-  const newerRemote = existing
-    .map((path) => {
-      const localFile = localMap[path]
-      const remoteFile = remoteMap[path]
-
-      if (remoteFile.stats.mtime > localFile.stats.mtime) {
-        return path
-      }
-    })
-    .filter(Boolean)
-
-  const sizeDifferent = existing
-    .map((path) => {
-      const localFile = localMap[path]
-      const remoteFile = remoteMap[path]
-
-      if (remoteFile.stats.size !== localFile.stats.size) {
-        return path
-      }
-    })
-    .filter(Boolean)
-
-  const md5Different = existing
-    .map((path) => {
-      const localFile = localMap[path]
-      const remoteFile = remoteMap[path]
-
-      if (remoteFile.stats.md5 !== localFile.stats.md5) {
-        console.log(remoteFile.stats.md5, '!==', localFile.stats.md5)
-        return path
-      }
-    })
-    .filter(Boolean)
-
-  console.log({
-    missingLocal: missingLocal.map((path) => path),
-    missingRemote: missingRemote.map((path) => path),
-    newerLocal: newerLocal.map((path) => path),
-    newerRemote: newerRemote.map((path) => path),
-    sizeDifferent: sizeDifferent.map((path) => path),
-    md5Different: md5Different.map((path) => path)
-  })
+  const { filesToDownload, filesToUpload } = diff({ localMap, remoteMap })
 
   if (syncDirection === 'cache') {
-    const filesToCache = uniq([
-      ...missingRemote,
-      //  ...newerLocal,
-      //  ...sizeDifferent,
-      ...md5Different
-    ]).sort()
-    console.log(`Caching ${filesToCache.length} files to ${connection.host}`)
+    console.log(`Caching ${filesToUpload.length} files to ${connection.host}`)
 
     await Promise.all(
-      filesToCache.map((path) =>
+      filesToUpload.map((path) =>
         queue.add(async () => {
           console.log(
             `Caching ${path}\n${join(remoteCacheDir, path)} -> ${join(
@@ -152,12 +77,6 @@ async function syncDir({
   }
 
   if (syncDirection === 'download') {
-    const filesToDownload = uniq([
-      ...missingLocal,
-      //  ...newerRemote,
-      //  ...sizeDifferent
-      ...md5Different
-    ]).sort()
     console.log(
       `Downloading ${filesToDownload.length} files from ${connection.host}`
     )

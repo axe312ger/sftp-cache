@@ -50,7 +50,8 @@
   "files": [
     "src/index.js",
     "src/filesystem.js",
-    "src/sftp.js"
+    "src/sftp.js",
+    "src/diff.js"
   ],
   "dependencies": {
     "execa": "^4.0.2",
