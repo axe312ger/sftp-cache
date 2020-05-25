@@ -38,7 +38,7 @@ async function syncDir({
   const localMap = buildFileMap(localFiles)
   const remoteMap = buildFileMap(remoteFiles)
 
-  const { filesToDownload, filesToUpload } = diff({
+  const { filesToDownload, filesToUpload } = await diff({
     ssh,
     localMap,
     remoteMap,
