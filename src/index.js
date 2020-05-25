@@ -52,12 +52,7 @@ async function syncDir({
     await Promise.all(
       filesToUpload.map((path) =>
         queue.add(async () => {
-          console.log(
-            `Caching ${path}\n${join(remoteCacheDir, path)} -> ${join(
-              localCacheDir,
-              path
-            )}`
-          )
+          console.log(`Caching ${path}`)
           const localPath = join(localCacheDir, path)
           const remotePath = join(remoteCacheDir, path)
           await ssh.putFile(localPath, remotePath)
@@ -89,12 +84,7 @@ async function syncDir({
     await Promise.all(
       filesToDownload.map((path) =>
         queue.add(async () => {
-          console.log(
-            `Downloading ${path}\n${join(remoteCacheDir, path)} -> ${join(
-              localCacheDir,
-              path
-            )}`
-          )
+          console.log(`Downloading ${path}`)
           const localPath = join(localCacheDir, path)
           const remotePath = join(remoteCacheDir, path)
           await mkdirp(dirname(localPath))
