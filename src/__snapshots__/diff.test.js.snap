@@ -1,3 +1,65 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`parses local directory 1`] = `[Function]`;
+exports[`complex variant 1`] = `
+Object {
+  "filesToDownload": Array [
+    "dir-to-cache/example-file-name.md",
+    "dir-to-cache/subdir/file-with-content.md",
+  ],
+  "filesToUpload": Array [
+    "dir-to-cache/file-in-root-dir.empty",
+    "dir-to-cache/subdir/file-with-content.md",
+  ],
+}
+`;
+
+exports[`file differs in size 1`] = `
+Object {
+  "filesToDownload": Array [
+    "dir-to-cache/file-in-root-dir.md",
+  ],
+  "filesToUpload": Array [
+    "dir-to-cache/file-in-root-dir.md",
+  ],
+}
+`;
+
+exports[`local has extra file 1`] = `
+Object {
+  "filesToDownload": Array [],
+  "filesToUpload": Array [
+    "dir-to-cache/file-in-root-dir.empty",
+  ],
+}
+`;
+
+exports[`local has newer file 1`] = `
+Object {
+  "filesToDownload": Array [
+    "dir-to-cache/example-file-name.md",
+  ],
+  "filesToUpload": Array [
+    "dir-to-cache/example-file-name.md",
+  ],
+}
+`;
+
+exports[`remote has extra file 1`] = `
+Object {
+  "filesToDownload": Array [
+    "dir-to-cache/file-in-root-dir.empty",
+  ],
+  "filesToUpload": Array [],
+}
+`;
+
+exports[`remote has newer file 1`] = `
+Object {
+  "filesToDownload": Array [
+    "dir-to-cache/example-file-name.md",
+  ],
+  "filesToUpload": Array [
+    "dir-to-cache/example-file-name.md",
+  ],
+}
+`;

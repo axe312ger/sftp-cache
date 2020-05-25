@@ -1,6 +1,10 @@
+const { resolve } = require('path')
 const { difference, intersection, uniq } = require('lodash')
 
-function diff({ localMap, remoteMap }) {
+const { getLocalMd5 } = require('./filesystem')
+const { getRemoteMd5 } = require('./sftp')
+
+async function diff({ ssh, localMap, remoteMap, localDir, remoteDir }) {
   /**
    * find files missing local
    * find files missing remote
@@ -51,33 +55,31 @@ function diff({ localMap, remoteMap }) {
     })
     .filter(Boolean)
 
-  const md5Different = sizeDifferent
-    .map((path) => {
-      const localFile = localMap[path]
-      const remoteFile = remoteMap[path]
+  const md5Different = []
 
-      // @todo actually call md5 check here
-      return path
+  for (const path of uniq([...newerLocal, ...newerRemote])) {
+    const localFile = resolve(localDir, path)
+    const remoteFile = resolve(remoteDir, path)
 
-      if (remoteFile.stats.md5 !== localFile.stats.md5) {
-        console.log(remoteFile.stats.md5, '!==', localFile.stats.md5)
-        return path
-      }
-    })
-    .filter(Boolean)
+    const localMd5 = await getLocalMd5(localFile)
+    const remoteMd5 = await getRemoteMd5({ ssh, path: remoteFile })
 
-  console.log({
-    missingLocal: missingLocal.map((path) => path),
-    missingRemote: missingRemote.map((path) => path),
-    newerLocal: newerLocal.map((path) => path),
-    newerRemote: newerRemote.map((path) => path),
-    sizeDifferent: sizeDifferent.map((path) => path),
-    md5Different: md5Different.map((path) => path)
-  })
+    if (localMd5 !== remoteMd5) {
+      md5Different.push(path)
+    }
+  }
 
-  const filesToDownload = uniq([...missingLocal, ...md5Different]).sort()
+  const filesToDownload = uniq([
+    ...missingLocal,
+    ...sizeDifferent,
+    ...md5Different
+  ]).sort()
 
-  const filesToUpload = uniq([...missingRemote, ...md5Different]).sort()
+  const filesToUpload = uniq([
+    ...missingRemote,
+    ...sizeDifferent,
+    ...md5Different
+  ]).sort()
 
   return {
     filesToDownload,

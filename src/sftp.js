@@ -94,8 +94,17 @@ async function getRemoteFiles({
   return list
 }
 
+async function getRemoteMd5({ ssh, path }) {
+  const md5sum = await ssh.exec('md5sum', [path])
+
+  const md5 = md5sum.split(' ')[0].trim()
+
+  return md5
+}
+
 module.exports = {
   sftpMkdirP,
   sftpReadDir,
-  getRemoteFiles
+  getRemoteFiles,
+  getRemoteMd5
 }

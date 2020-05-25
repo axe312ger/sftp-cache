@@ -3,6 +3,14 @@
 exports[`parses local directory 1`] = `
 Array [
   Object {
+    "name": "example-file-name.md",
+    "path": "dir-to-cache/example-file-name.md",
+    "stats": Object {
+      "mtime": 1590440941,
+      "size": 2307,
+    },
+  },
+  Object {
     "name": "file-in-root-dir.empty",
     "path": "dir-to-cache/file-in-root-dir.empty",
     "stats": Object {
