@@ -1,7 +1,6 @@
 # SFTP-CACHE
 
 [![npm](https://img.shields.io/npm/v/sftp-cache.svg?label=npm@latest)](https://www.npmjs.com/package/sftp-cache)
-[![npm](https://img.shields.io/npm/v/sftp-cache/canary.svg)](https://www.npmjs.com/package/sftp-cache)
 [![npm](https://img.shields.io/npm/dm/sftp-cache.svg)](https://www.npmjs.com/package/sftp-cache)
 
 [![Maintainability](https://api.codeclimate.com/v1/badges/fc81fa5e535561c0a6ff/maintainability)](https://codeclimate.com/github/axe312ger/sftp-cache/maintainability)
@@ -22,7 +21,7 @@ The main goal is to allow caching of heavy project assets like videos to avoid u
 ## Installation
 
 ```sh
-npm i sftp-cache@canary
+npm i sftp-cache
 ```
 
 ## Usage
