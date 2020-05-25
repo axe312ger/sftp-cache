@@ -6,24 +6,24 @@ Array [
     "name": "example-file-name.md",
     "path": "dir-to-cache/example-file-name.md",
     "stats": Object {
-      "mtime": 1590440941,
-      "size": 2307,
+      "mtime": 1,
+      "size": 4312,
     },
   },
   Object {
     "name": "file-in-root-dir.empty",
     "path": "dir-to-cache/file-in-root-dir.empty",
     "stats": Object {
-      "mtime": 1590433826,
-      "size": 0,
+      "mtime": 1,
+      "size": 4312,
     },
   },
   Object {
     "name": "file-with-content.md",
     "path": "dir-to-cache/subdir/file-with-content.md",
     "stats": Object {
-      "mtime": 1590433917,
-      "size": 2307,
+      "mtime": 1,
+      "size": 4312,
     },
   },
 ]
