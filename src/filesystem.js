@@ -16,23 +16,6 @@ async function getLocalFiles(dir, localDir) {
       stats: { size, mtime }
     } = file
 
-    // const os = platform()
-    // let md5Command = 'md5sum'
-    // let md5Params = [path]
-
-    // if (os === 'darwin') {
-    //   md5Command = 'md5'
-    //   md5Params = ['-q', path]
-    // }
-
-    // if (os === 'win32') {
-    //   md5Command = 'CertUtil'
-    //   md5Params = ['-hashfile', path, 'MD5']
-    // }
-
-    // const { stdout } = await execa(md5Command, md5Params)
-    // const md5 = stdout.match(/[a-f0-9]{32}/)[0]
-
     list.push({
       name,
       path: relative(localDir, path),
@@ -47,6 +30,28 @@ async function getLocalFiles(dir, localDir) {
   return list
 }
 
+async function getLocalMd5(path) {
+  const os = platform()
+  let md5Command = 'md5sum'
+  let md5Params = [path]
+
+  if (os === 'darwin') {
+    md5Command = 'md5'
+    md5Params = ['-q', path]
+  }
+
+  if (os === 'win32') {
+    md5Command = 'CertUtil'
+    md5Params = ['-hashfile', path, 'MD5']
+  }
+
+  const { stdout } = await execa(md5Command, md5Params)
+  const md5 = stdout.match(/[a-f0-9]{32}/)[0]
+
+  return md5
+}
+
 module.exports = {
-  getLocalFiles
+  getLocalFiles,
+  getLocalMd5
 }

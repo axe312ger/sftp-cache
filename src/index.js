@@ -38,7 +38,13 @@ async function syncDir({
   const localMap = buildFileMap(localFiles)
   const remoteMap = buildFileMap(remoteFiles)
 
-  const { filesToDownload, filesToUpload } = diff({ localMap, remoteMap })
+  const { filesToDownload, filesToUpload } = diff({
+    ssh,
+    localMap,
+    remoteMap,
+    localDir,
+    remoteDir
+  })
 
   if (syncDirection === 'cache') {
     console.log(`Caching ${filesToUpload.length} files to ${connection.host}`)
