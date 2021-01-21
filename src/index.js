@@ -1,7 +1,7 @@
 const { resolve, join, dirname } = require('path')
 
 const { mkdirp, utimes } = require('fs-extra')
-const NodeSsh = require('node-ssh')
+const { NodeSSH } = require('node-ssh')
 const { default: PQueue } = require('p-queue')
 
 const diff = require('./diff')
@@ -114,7 +114,7 @@ module.exports = async function sftpCache({
   const queue = new PQueue({ concurrency })
 
   console.log(`Connecting via ssh to ${connection.host}`)
-  const ssh = new NodeSsh()
+  const ssh = new NodeSSH()
   await ssh.connect(connection)
   const sftp = await ssh.requestSFTP()
 
