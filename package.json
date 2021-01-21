@@ -1,6 +1,6 @@
 {
   "name": "sftp-cache",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "Cache via sftp. Supports caching files and redownloading them",
   "main": "src/index.js",
   "engines": {
