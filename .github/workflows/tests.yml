@@ -1,12 +1,30 @@
-name: Tests
+name: Jest Annotations & Coverage (Tests)
 
-on: [push]
+on: [pull_request]
 
 jobs:
-  build:
+  jest:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        node-version: [10.x, 12.x, 14.x]
+
     steps:
-      - uses: actions/checkout@v1
-      - name: Run Jest
-        uses: stefanoeb/jest-action@1.0.2
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: yarn install
+
+      - name: Run jest with coverage report
+        uses: ChristiaanScheermeijer/jest-reporter-action@v0.4.0
+        if: matrix.node-version == '14.x'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          test-command: 'yarn jest --coverage'
+
+      - name: Run jest
+        if: matrix.node-version != '14.x'
+        run: yarn jest

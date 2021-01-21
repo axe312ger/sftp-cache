@@ -1,5 +1,5 @@
 dist
-test.js
+jest.results.json
 
 # Created by https://www.gitignore.io/api/git,osx,node,code,linux,windows
 # Edit at https://www.gitignore.io/?templates=git,osx,node,code,linux,windows
