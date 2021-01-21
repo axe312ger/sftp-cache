@@ -57,7 +57,11 @@ async function diff({ ssh, localMap, remoteMap, localDir, remoteDir }) {
 
   const md5Different = []
 
-  for (const path of uniq([...newerLocal, ...newerRemote])) {
+  // check files that differ in time but with same size
+  const differentTimestamp = uniq([...newerLocal, ...newerRemote])
+  const filesToCheck = difference(differentTimestamp, sizeDifferent)
+
+  for (const path of filesToCheck) {
     const localFile = resolve(localDir, path)
     const remoteFile = resolve(remoteDir, path)
 

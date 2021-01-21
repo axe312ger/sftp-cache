@@ -13,6 +13,13 @@ Object {
 }
 `;
 
+exports[`does not sync file when timestamp differs but size and md5 match 1`] = `
+Object {
+  "filesToDownload": Array [],
+  "filesToUpload": Array [],
+}
+`;
+
 exports[`file differs in size 1`] = `
 Object {
   "filesToDownload": Array [
@@ -60,6 +67,17 @@ Object {
   ],
   "filesToUpload": Array [
     "dir-to-cache/example-file-name.md",
+  ],
+}
+`;
+
+exports[`syncs file when size is same but timestamp and md5 differ 1`] = `
+Object {
+  "filesToDownload": Array [
+    "dir-to-cache/maybe-updated.file",
+  ],
+  "filesToUpload": Array [
+    "dir-to-cache/maybe-updated.file",
   ],
 }
 `;
