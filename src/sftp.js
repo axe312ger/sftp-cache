@@ -65,24 +65,18 @@ async function getRemoteFiles({
     } = file
     const path = join(dir, filename)
     if (longname[0] !== 'd') {
-      // const md5sum = await ssh.exec('md5sum', [join(dir, filename)])
-
-      // const md5 = md5sum.split(' ')[0].trim()
-
       list.push({
         name: filename,
         path: relative(remoteCacheDir, join(dir, filename)),
         stats: {
           size,
           mtime
-          // md5
         }
       })
       continue
     }
 
     const subDirList = await getRemoteFiles({
-      // ssh,
       sftp,
       dir: path,
       remoteCacheDir
