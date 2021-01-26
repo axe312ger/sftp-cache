@@ -42,8 +42,8 @@ async function syncDir({
     ssh,
     localMap,
     remoteMap,
-    localDir,
-    remoteDir
+    localDir: localCacheDir,
+    remoteDir: remoteCacheDir
   })
 
   if (syncDirection === 'cache') {
